@@ -11,6 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(ap1_msgs REQUIRED)
 
 add_executable(pnc_sim_node src/main.cpp)
 target_include_directories(pnc_sim_node PUBLIC
@@ -23,6 +24,7 @@ ament_target_dependencies(
   "std_msgs"
   "geometry_msgs"
   "nav_msgs"
+  "ap1_msgs"
 )
 
 install(TARGETS

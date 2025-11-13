@@ -9,71 +9,73 @@
 #include <chrono>
 #include <cmath>
 
+#include "geometry_msgs/msg/point.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
-#include "geometry_msgs/msg/point.hpp"
 
-namespace ap1::sim {
+#include "ap1_msgs/msg/motor_power_stamped.hpp"
+#include "ap1_msgs/msg/turn_angle_stamped.hpp"
+#include "ap1_msgs/msg/vehicle_speed_stamped.hpp"
 
-class SimpleVehicleSimNode : public rclcpp::Node {
-public:
+namespace ap1::sim
+{
+
+class SimpleVehicleSimNode : public rclcpp::Node
+{
+  public:
     SimpleVehicleSimNode()
-    : Node("simple_vehicle_sim_node")
-    , current_throttle_(0.0f)
-    , current_steer_rad_(0.0f)
+        : Node("simple_vehicle_sim_node"), current_throttle_(0.0f), current_steer_rad_(0.0f)
     {
-        cfg_.mass_kg        = 1200.0f;     // car
-        cfg_.max_force_n    = 4000.0f;     // so called "engine" force at full throttle
-        cfg_.drag_coeff     = 0.5f;        // simple linear drag 
-        cfg_.wheelbase_m    = 2.5f;        
-        cfg_.max_steer_rad  = 0.5f;       
+        cfg_.mass_kg = 1200.0f;     // car
+        cfg_.max_force_n = 4000.0f; // so called "engine" force at full throttle
+        cfg_.drag_coeff = 0.5f;     // simple linear drag
+        cfg_.wheelbase_m = 2.5f;
+        cfg_.max_steer_rad = 0.5f;
 
         // Initial state
-        state_.x_m   = 0.0f;
-        state_.y_m   = 0.0f;
-        state_.yaw   = 0.0f;
+        state_.x_m = 0.0f;
+        state_.y_m = 0.0f;
+        state_.yaw = 0.0f;
         state_.v_mps = 0.0f;
 
         last_update_ = this->now();
 
         // Subscriptions from Control
-        throttle_sub_ = this->create_subscription<std_msgs::msg::Float32>(
-            "motor_power", 10,
-            std::bind(&SimpleVehicleSimNode::on_throttle, this, std::placeholders::_1)
-        );
+        throttle_sub_ = this->create_subscription<ap1_msgs::msg::MotorPowerStamped>(
+            "/ap1/control/motor_power", 10,
+            std::bind(&SimpleVehicleSimNode::on_throttle, this, std::placeholders::_1));
 
-        steer_sub_ = this->create_subscription<std_msgs::msg::Float32>(
-            "turn_angle", 10,
-            std::bind(&SimpleVehicleSimNode::on_steer, this, std::placeholders::_1)
-        );
+        steer_sub_ = this->create_subscription<ap1_msgs::msg::TurnAngleStamped>(
+            "/ap1/control/turn_angle", 10,
+            std::bind(&SimpleVehicleSimNode::on_steer, this, std::placeholders::_1));
 
         // Publishers to Planning
-        speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("vehicle_speed", 10);
-        position_pub_ = this->create_publisher<geometry_msgs::msg::Point>("vehicle_position", 10);
+        speed_pub_ = this->create_publisher<ap1_msgs::msg::VehicleSpeedStamped>(
+            "/ap1/actuation/speed_actual", 10);
+        position_pub_ = this->create_publisher<geometry_msgs::msg::Point>(
+            "/ap1/actuation/turn_angle_actual", 10);
 
         // Timer to step the simulation at fixed rate
         using namespace std::chrono_literals;
-        sim_timer_ = this->create_wall_timer(
-            20ms,  // 50 Hz
-            std::bind(&SimpleVehicleSimNode::on_timer, this)
-        );
+        sim_timer_ = this->create_wall_timer(20ms, // 50 Hz
+                                             std::bind(&SimpleVehicleSimNode::on_timer, this));
 
         RCLCPP_INFO(this->get_logger(), "Simple Vehicle Sim Node initialized");
     }
 
+    /**
 
-/**
+    mass_kg	= inertia which makes acceleration slower, car feels heavier
+    max_force_n	= engine power, raises acceleration and top speed
+    drag_coeff = air/friction resistance, reduces top speed and causes quicker slow-down when
+    throttle drops wheelbase_m = distance between axles, influences turning radius — longer = wider
+    turns max_steer_rad = steering limit, allows tighter turns if larger
 
-mass_kg	= inertia which makes acceleration slower, car feels heavier
-max_force_n	= engine power, raises acceleration and top speed
-drag_coeff = air/friction resistance, reduces top speed and causes quicker slow-down when throttle drops
-wheelbase_m = distance between axles, influences turning radius — longer = wider turns
-max_steer_rad = steering limit, allows tighter turns if larger
-
-*/
-private:
+    */
+  private:
     // sample configuration for the car
-    struct CarConfig {
+    struct CarConfig
+    {
         float mass_kg;
         float max_force_n;
         float drag_coeff;
@@ -82,36 +84,45 @@ private:
     };
 
     // Car state in 2D
-    struct CarState {
+    struct CarState
+    {
         float x_m;
         float y_m;
-        float yaw;     // radians
-        float v_mps;   // forward speed
+        float yaw;   // radians
+        float v_mps; // forward speed
     };
 
     // Callbacks
-    void on_throttle(const std_msgs::msg::Float32::SharedPtr msg) {
+    void on_throttle(const ap1_msgs::msg::MotorPowerStamped::SharedPtr msg)
+    {
         // Expecting throttle in range [-1, 1] or [0, 1]
-        current_throttle_ = msg->data;
+        current_throttle_ = msg->power;
         // apply to [0, 1] for now
-        if (current_throttle_ < 0.0f) current_throttle_ = 0.0f;
-        if (current_throttle_ > 1.0f) current_throttle_ = 1.0f;
+        if (current_throttle_ < 0.0f)
+            current_throttle_ = 0.0f;
+        if (current_throttle_ > 1.0f)
+            current_throttle_ = 1.0f;
     }
 
-    void on_steer(const std_msgs::msg::Float32::SharedPtr msg) {
-        current_steer_rad_ = msg->data;
+    void on_steer(const ap1_msgs::msg::TurnAngleStamped::SharedPtr msg)
+    {
+        current_steer_rad_ = msg->angle;
 
         // Clamp steering to physical limits
-        if (current_steer_rad_ > cfg_.max_steer_rad)  current_steer_rad_ = cfg_.max_steer_rad;
-        if (current_steer_rad_ < -cfg_.max_steer_rad) current_steer_rad_ = -cfg_.max_steer_rad;
+        if (current_steer_rad_ > cfg_.max_steer_rad)
+            current_steer_rad_ = cfg_.max_steer_rad;
+        if (current_steer_rad_ < -cfg_.max_steer_rad)
+            current_steer_rad_ = -cfg_.max_steer_rad;
     }
 
-    void on_timer() {
+    void on_timer()
+    {
         // Compute dt since last update
         rclcpp::Time now = this->now();
         double dt = (now - last_update_).seconds();
-        if (dt <= 0.0) {
-            dt = 0.02;  // fallback
+        if (dt <= 0.0)
+        {
+            dt = 0.02; // fallback
         }
         last_update_ = now;
 
@@ -122,7 +133,8 @@ private:
     // I hope this works but very very questionable
 
     // Basic longitudinal + kinematic bicycle dynamics
-    void step_dynamics(float dt) {
+    void step_dynamics(float dt)
+    {
         // Longitudinal force from engine
         float engine_force = current_throttle_ * cfg_.max_force_n;
 
@@ -135,7 +147,8 @@ private:
 
         // Integrate velocity
         state_.v_mps += accel * dt;
-        if (state_.v_mps < 0.0f) {
+        if (state_.v_mps < 0.0f)
+        {
             state_.v_mps = 0.0f;
         }
 
@@ -150,13 +163,15 @@ private:
         state_.y_m += state_.v_mps * std::sin(state_.yaw) * dt;
     }
 
-    void publish_state() {
+    void publish_state()
+    {
         // Speed to Planner
-        std_msgs::msg::Float32 speed_msg;
-        speed_msg.data = state_.v_mps;
+        ap1_msgs::msg::VehicleSpeedStamped speed_msg;
+        speed_msg.speed = state_.v_mps;
         speed_pub_->publish(speed_msg);
 
-        // Position to whoever wants it (need to add a "subscriber" in Planner, currently connected to control)
+        // Position to whoever wants it (need to add a "subscriber" in Planner, currently connected
+        // to control)
         geometry_msgs::msg::Point pos_msg;
         pos_msg.x = state_.x_m;
         pos_msg.y = state_.y_m;
@@ -173,16 +188,16 @@ private:
     float current_steer_rad_;
 
     // ROS stuff
-    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr throttle_sub_;
-    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr steer_sub_;
+    rclcpp::Subscription<ap1_msgs::msg::MotorPowerStamped>::SharedPtr throttle_sub_;
+    rclcpp::Subscription<ap1_msgs::msg::TurnAngleStamped>::SharedPtr steer_sub_;
 
-    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr speed_pub_;
+    rclcpp::Publisher<ap1_msgs::msg::VehicleSpeedStamped>::SharedPtr speed_pub_;
     rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr position_pub_;
 
     rclcpp::TimerBase::SharedPtr sim_timer_;
     rclcpp::Time last_update_;
 };
 
-} 
+} // namespace ap1::sim
 
 #endif
