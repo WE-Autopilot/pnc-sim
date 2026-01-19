@@ -16,6 +16,7 @@
 #include "ap1_msgs/msg/motor_power_stamped.hpp"
 #include "ap1_msgs/msg/turn_angle_stamped.hpp"
 #include "ap1_msgs/msg/vehicle_speed_stamped.hpp"
+#include "ap1_msgs/msg/float_stamped.hpp"
 
 namespace ap1::sim
 {
@@ -41,16 +42,16 @@ class SimpleVehicleSimNode : public rclcpp::Node
         last_update_ = this->now();
 
         // Subscriptions from Control
-        throttle_sub_ = this->create_subscription<ap1_msgs::msg::MotorPowerStamped>(
+        throttle_sub_ = this->create_subscription<ap1_msgs::msg::FloatStamped>(
             "/ap1/control/motor_power", 10,
             std::bind(&SimpleVehicleSimNode::on_throttle, this, std::placeholders::_1));
 
-        steer_sub_ = this->create_subscription<ap1_msgs::msg::TurnAngleStamped>(
+        steer_sub_ = this->create_subscription<ap1_msgs::msg::FloatStamped>(
             "/ap1/control/turn_angle", 10,
             std::bind(&SimpleVehicleSimNode::on_steer, this, std::placeholders::_1));
 
         // Publishers to Planning
-        speed_pub_ = this->create_publisher<ap1_msgs::msg::VehicleSpeedStamped>(
+        speed_pub_ = this->create_publisher<ap1_msgs::msg::FloatStamped>(
             "/ap1/actuation/speed_actual", 10);
         position_pub_ = this->create_publisher<geometry_msgs::msg::Point>(
             "/ap1/actuation/turn_angle_actual", 10);
@@ -93,10 +94,10 @@ class SimpleVehicleSimNode : public rclcpp::Node
     };
 
     // Callbacks
-    void on_throttle(const ap1_msgs::msg::MotorPowerStamped::SharedPtr msg)
+    void on_throttle(const ap1_msgs::msg::FloatStamped::SharedPtr msg)
     {
         // Expecting throttle in range [-1, 1] or [0, 1]
-        current_throttle_ = msg->power;
+        current_throttle_ = msg->value;
         // apply to [0, 1] for now
         if (current_throttle_ < 0.0f)
             current_throttle_ = 0.0f;
@@ -104,9 +105,9 @@ class SimpleVehicleSimNode : public rclcpp::Node
             current_throttle_ = 1.0f;
     }
 
-    void on_steer(const ap1_msgs::msg::TurnAngleStamped::SharedPtr msg)
+    void on_steer(const ap1_msgs::msg::FloatStamped::SharedPtr msg)
     {
-        current_steer_rad_ = msg->angle;
+        current_steer_rad_ = msg->value;
 
         // Clamp steering to physical limits
         if (current_steer_rad_ > cfg_.max_steer_rad)
@@ -166,8 +167,8 @@ class SimpleVehicleSimNode : public rclcpp::Node
     void publish_state()
     {
         // Speed to Planner
-        ap1_msgs::msg::VehicleSpeedStamped speed_msg;
-        speed_msg.speed = state_.v_mps;
+        ap1_msgs::msg::FloatStamped speed_msg;
+        speed_msg.value = state_.v_mps;
         speed_pub_->publish(speed_msg);
 
         // Position to whoever wants it (need to add a "subscriber" in Planner, currently connected
@@ -188,10 +189,10 @@ class SimpleVehicleSimNode : public rclcpp::Node
     float current_steer_rad_;
 
     // ROS stuff
-    rclcpp::Subscription<ap1_msgs::msg::MotorPowerStamped>::SharedPtr throttle_sub_;
-    rclcpp::Subscription<ap1_msgs::msg::TurnAngleStamped>::SharedPtr steer_sub_;
+    rclcpp::Subscription<ap1_msgs::msg::FloatStamped>::SharedPtr throttle_sub_;
+    rclcpp::Subscription<ap1_msgs::msg::FloatStamped>::SharedPtr steer_sub_;
 
-    rclcpp::Publisher<ap1_msgs::msg::VehicleSpeedStamped>::SharedPtr speed_pub_;
+    rclcpp::Publisher<ap1_msgs::msg::FloatStamped>::SharedPtr speed_pub_;
     rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr position_pub_;
 
     rclcpp::TimerBase::SharedPtr sim_timer_;
