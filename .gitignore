@@ -8,3 +8,6 @@ log/
 
 # CMake
 compile_commands.json
+
+# IDEs
+.vscode/
