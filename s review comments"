@@ -1,0 +1,13 @@
+* [33m98f6b97[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpc-87-reset-update[m[33m, [m[1;31morigin/pc-87-reset-update[m[33m)[m WIP: reset update before rebase
+* [33m6282b77[m Implement reset functionality for pnc_sim
+* [33m3ded2bf[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Removed old msg headers to fall in line with ap1-msgs
+[31m|[m * [33m4379ea5[m[33m ([m[1;31morigin/entities_and_lanes[m[33m)[m New message types (partial)
+[31m|[m[31m/[m  
+*   [33m14558d8[m Merge pull request #2 from WE-Autopilot/messages
+[33m|[m[34m\[m  
+[33m|[m * [33m8b679a2[m consolidating float message types
+[33m|[m[33m/[m  
+* [33m8cf7614[m Add codeowners
+* [33mc4fa96f[m[33m ([m[1;31morigin/pc-87-reset-clean[m[33m, [m[1;32mpc-87-reset-clean[m[33m)[m added ap1_msg types
+* [33m4077337[m simulation node addition
+* [33mf8a7127[m Initial commit
