@@ -14,9 +14,6 @@
 
 #include "ap1/pnc_sim/sim.hpp"
 #include "ap1_msgs/msg/float_stamped.hpp"
-#include "ap1_msgs/msg/motor_power_stamped.hpp"
-#include "ap1_msgs/msg/turn_angle_stamped.hpp"
-#include "ap1_msgs/msg/vehicle_speed_stamped.hpp"
 
 namespace ap1::sim {
 
