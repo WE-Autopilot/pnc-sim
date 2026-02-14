@@ -12,8 +12,10 @@ int main(int argc, char ** argv)
     // make sim
     auto sim = ap1::sim::Sim();
 
-    // make ros node
+    // init ROS
     rclcpp::init(argc, argv);
+
+    // make ros node
     auto ros_node = std::make_shared<ap1::sim::SimpleVehicleSimNode>();
 
     // spin ros node in separate thread
