@@ -1,199 +1,173 @@
 /**
  * Created: Nov. 9, 2025
  * Author(s): Obaid
+ *
+ * Publishes:
+ * - the world's lanes and entities relative to the car,
+ * - Car speed
+ * 
+ * Subscribes to:
+ * - Target motor power (from Control)
+ * - Target turn angle (from Control)
  */
 
 #ifndef AP1_SIM_NODE_HPP
 #define AP1_SIM_NODE_HPP
 
-#include <chrono>
 #include <cmath>
-
-#include "geometry_msgs/msg/point.hpp"
+#include <rclcpp/node_options.hpp>
+#include <stdexcept>
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/float32.hpp"
 
+#include "ap1/pnc_sim/sim.hpp"
+#include "ap1_msgs/msg/entity_state.hpp"
 #include "ap1_msgs/msg/float_stamped.hpp"
+#include "ap1_msgs/msg/entity_state_array.hpp"
+#include "ap1_msgs/msg/lane_boundaries.hpp"
 
-namespace ap1::sim
-{
+using ap1_msgs::msg::EntityState;
+using ap1_msgs::msg::FloatStamped;
+using ap1_msgs::msg::EntityStateArray;
+using ap1_msgs::msg::LaneBoundaries;
 
-class SimpleVehicleSimNode : public rclcpp::Node
-{
-  public:
-    SimpleVehicleSimNode()
-        : Node("simple_vehicle_sim_node"), current_throttle_(0.0f), current_steer_rad_(0.0f)
-    {
-        cfg_.mass_kg = 1200.0f;     // car
-        cfg_.max_force_n = 4000.0f; // so called "engine" force at full throttle
-        cfg_.drag_coeff = 0.5f;     // simple linear drag
-        cfg_.wheelbase_m = 2.5f;
-        cfg_.max_steer_rad = 0.5f;
+template<typename T>
+T to_car_frame(
+  const T& p,
+  float car_x,
+  float car_y,
+  float car_yaw
+) {
+  T out;
 
-        // Initial state
-        state_.x_m = 0.0f;
-        state_.y_m = 0.0f;
-        state_.yaw = 0.0f;
-        state_.v_mps = 0.0f;
+  float dx = p.x - car_x;
+  float dy = p.y - car_y;
 
-        last_update_ = this->now();
+  float c = std::cos(car_yaw);
+  float s = std::sin(car_yaw);
 
-        // Subscriptions from Control
-        throttle_sub_ = this->create_subscription<ap1_msgs::msg::FloatStamped>(
-            "/ap1/control/motor_power", 10,
-            std::bind(&SimpleVehicleSimNode::on_throttle, this, std::placeholders::_1));
+  out.x = c * dx + s * dy;
+  out.y = -s * dx + c * dy;
+  out.z = p.z;
 
-        steer_sub_ = this->create_subscription<ap1_msgs::msg::FloatStamped>(
-            "/ap1/control/turn_angle", 10,
-            std::bind(&SimpleVehicleSimNode::on_steer, this, std::placeholders::_1));
+  return out;
+}
 
-        // Publishers to Planning
-        speed_pub_ = this->create_publisher<ap1_msgs::msg::FloatStamped>(
-            "/ap1/actuation/speed_actual", 10);
-        position_pub_ = this->create_publisher<geometry_msgs::msg::Point>(
-            "/ap1/actuation/turn_angle_actual", 10);
+namespace ap1::sim {
+class SimNode : public rclcpp::Node {
+public:
+  // latest mem
+  float last_throttle_cmd = 0.f;
+  float last_brake_cmd = 0.f;
+  float last_steer_cmd_rad = 0.f;
 
-        // Timer to step the simulation at fixed rate
-        using namespace std::chrono_literals;
-        sim_timer_ = this->create_wall_timer(20ms, // 50 Hz
-                                             std::bind(&SimpleVehicleSimNode::on_timer, this));
+  // Default Constructor
+  SimNode(const ap1::sim::Sim &sim)
+      : Node("sim_node"), sim(sim) 
+  {
+    // Subscriptions
+    throttle_sub_ = this->create_subscription<FloatStamped>(
+      "/ap1/control/motor_power", 1,
+      [this](const FloatStamped::SharedPtr f) {
+        this->on_throttle(f);
+      }
+    );
 
-        RCLCPP_INFO(this->get_logger(), "Simple Vehicle Sim Node initialized");
+    steer_sub_ = this->create_subscription<FloatStamped>(
+      "/ap1/control/turn_angle", 1,
+      [this](const FloatStamped::SharedPtr f) {
+        this->on_steer(f);
+      }
+    );
+
+    brake_sub_ = this->create_subscription<FloatStamped>(
+      "/ap1/control/brake", 1,
+      [this](const FloatStamped::SharedPtr f) {
+        this->on_brake(f);
+      }
+    );
+
+    // Publishers
+    speed_pub_ = this->create_publisher<FloatStamped>("/ap1/actuation/speed", 1);
+    lanes_pub_ = this->create_publisher<LaneBoundaries>("/ap1/mapping/lanes", 1);
+    entities_pub_ = this->create_publisher<EntityStateArray>("/ap1/mapping/entities", 1);
+    
+    // Log
+    RCLCPP_INFO(this->get_logger(), "Simulation ROS Node Started.");
+  }
+
+  /**
+   * @brief Publish the sim's details to the output topics.
+   * Transforms the absolute coordinate space of the sim into relative car coords.
+   */
+  void publish() {
+    float car_x = sim.car.x;
+    float car_y = sim.car.y;
+    float car_yaw = sim.car.yaw;
+
+    // Speed
+    FloatStamped speed_msg;
+    speed_msg.value = this->sim.car.speed_mps;
+    speed_pub_->publish(speed_msg);
+
+    // Entities
+    auto entities_msg = sim.entities; // copy
+    for (auto& e : entities_msg.entities) {
+      e = to_car_frame(e, car_x, car_y, car_yaw);
+      e.gamma -= car_yaw; // rotate orientation into car frame
+    }
+    entities_pub_->publish(entities_msg);
+
+    // Lane
+    auto lane_msg = sim.lane; // copy
+    for (auto& p : lane_msg.left) {
+      p = to_car_frame(p, car_x, car_y, car_yaw);
+    }
+    for (auto& p : lane_msg.right) {
+      p = to_car_frame(p, car_x, car_y, car_yaw);
+    }
+    lanes_pub_->publish(lane_msg);
+  }
+private:
+  const ap1::sim::Sim &sim;
+  // Callbacks
+  void on_throttle(const FloatStamped::SharedPtr msg) {
+    // check value first and crash otherwise
+    if (msg->value < 0.f || msg->value > 1.f) {
+      throw std::out_of_range("Throttle value out of range.");
     }
 
-    /**
+    // Set value
+    this->last_throttle_cmd = msg->value;
+  }
 
-    mass_kg	= inertia which makes acceleration slower, car feels heavier
-    max_force_n	= engine power, raises acceleration and top speed
-    drag_coeff = air/friction resistance, reduces top speed and causes quicker slow-down when
-    throttle drops wheelbase_m = distance between axles, influences turning radius — longer = wider
-    turns max_steer_rad = steering limit, allows tighter turns if larger
-
-    */
-  private:
-    // sample configuration for the car
-    struct CarConfig
-    {
-        float mass_kg;
-        float max_force_n;
-        float drag_coeff;
-        float wheelbase_m;
-        float max_steer_rad;
-    };
-
-    // Car state in 2D
-    struct CarState
-    {
-        float x_m;
-        float y_m;
-        float yaw;   // radians
-        float v_mps; // forward speed
-    };
-
-    // Callbacks
-    void on_throttle(const ap1_msgs::msg::FloatStamped::SharedPtr msg)
-    {
-        // Expecting throttle in range [-1, 1] or [0, 1]
-        current_throttle_ = msg->value;
-        // apply to [0, 1] for now
-        if (current_throttle_ < 0.0f)
-            current_throttle_ = 0.0f;
-        if (current_throttle_ > 1.0f)
-            current_throttle_ = 1.0f;
+  void on_steer(const FloatStamped::SharedPtr msg) {
+    // check value first and crash otherwise
+    if (msg->value < -1.f || msg->value > 1.f) {
+      throw std::out_of_range("Steer value out of range.");
     }
 
-    void on_steer(const ap1_msgs::msg::FloatStamped::SharedPtr msg)
-    {
-        current_steer_rad_ = msg->value;
+    // Set value
+    this->last_steer_cmd_rad = msg->value;
+  }
 
-        // Clamp steering to physical limits
-        if (current_steer_rad_ > cfg_.max_steer_rad)
-            current_steer_rad_ = cfg_.max_steer_rad;
-        if (current_steer_rad_ < -cfg_.max_steer_rad)
-            current_steer_rad_ = -cfg_.max_steer_rad;
+  void on_brake(const FloatStamped::SharedPtr msg) {
+    // check value first and crash otherwise
+    if (msg->value < 0.f || msg->value > 1.f) {
+      throw std::out_of_range("Brake value out of range.");
     }
 
-    void on_timer()
-    {
-        // Compute dt since last update
-        rclcpp::Time now = this->now();
-        double dt = (now - last_update_).seconds();
-        if (dt <= 0.0)
-        {
-            dt = 0.02; // fallback
-        }
-        last_update_ = now;
+    // Set value
+    this->last_brake_cmd = msg->value;
+  }
 
-        step_dynamics(static_cast<float>(dt));
-        publish_state();
-    }
+  // ROS subs/pubs
+  rclcpp::Subscription<FloatStamped>::SharedPtr throttle_sub_;
+  rclcpp::Subscription<FloatStamped>::SharedPtr steer_sub_;
+  rclcpp::Subscription<FloatStamped>::SharedPtr brake_sub_;
 
-    // I hope this works but very very questionable
-
-    // Basic longitudinal + kinematic bicycle dynamics
-    void step_dynamics(float dt)
-    {
-        // Longitudinal force from engine
-        float engine_force = current_throttle_ * cfg_.max_force_n;
-
-        // Very crude drag, proportional to speed
-        float drag_force = cfg_.drag_coeff * state_.v_mps;
-
-        // Net force and acceleration
-        float net_force = engine_force - drag_force;
-        float accel = net_force / cfg_.mass_kg;
-
-        // Integrate velocity
-        state_.v_mps += accel * dt;
-        if (state_.v_mps < 0.0f)
-        {
-            state_.v_mps = 0.0f;
-        }
-
-        // Kinematic turning
-        float beta = std::tan(current_steer_rad_);
-        float yaw_rate = (state_.v_mps / cfg_.wheelbase_m) * beta;
-
-        state_.yaw += yaw_rate * dt;
-
-        // Integrate position
-        state_.x_m += state_.v_mps * std::cos(state_.yaw) * dt;
-        state_.y_m += state_.v_mps * std::sin(state_.yaw) * dt;
-    }
-
-    void publish_state()
-    {
-        // Speed to Planner
-        ap1_msgs::msg::FloatStamped speed_msg;
-        speed_msg.value = state_.v_mps;
-        speed_pub_->publish(speed_msg);
-
-        // Position to whoever wants it (need to add a "subscriber" in Planner, currently connected
-        // to control)
-        geometry_msgs::msg::Point pos_msg;
-        pos_msg.x = state_.x_m;
-        pos_msg.y = state_.y_m;
-        pos_msg.z = 0.0;
-        position_pub_->publish(pos_msg);
-    }
-
-    // Config and state
-    CarConfig cfg_;
-    CarState state_;
-
-    // Inputs from Control
-    float current_throttle_;
-    float current_steer_rad_;
-
-    // ROS stuff
-    rclcpp::Subscription<ap1_msgs::msg::FloatStamped>::SharedPtr throttle_sub_;
-    rclcpp::Subscription<ap1_msgs::msg::FloatStamped>::SharedPtr steer_sub_;
-
-    rclcpp::Publisher<ap1_msgs::msg::FloatStamped>::SharedPtr speed_pub_;
-    rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr position_pub_;
-
-    rclcpp::TimerBase::SharedPtr sim_timer_;
-    rclcpp::Time last_update_;
+  rclcpp::Publisher<FloatStamped>::SharedPtr speed_pub_;
+  rclcpp::Publisher<EntityStateArray>::SharedPtr entities_pub_;
+  rclcpp::Publisher<LaneBoundaries>::SharedPtr lanes_pub_;
 };
 
 } // namespace ap1::sim

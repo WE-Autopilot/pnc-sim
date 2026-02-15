@@ -4,17 +4,15 @@
 This package simulates a small car model that connects to the Control Node.  
 It’s used to test basic motion without needing the full planning stack. YET! More to come with that later...
 
-
 ## Overview
 
 The **Control Node** publishes:
 - `/motor_power` → throttle command (0–1)
 - `/turn_angle` → steering command (radians)
 
-The **Sim Node** (`SimpleVehicleSimNode`) subscribes to those and publishes:
+The **Sim Node** (`SimNode`) subscribes to those and publishes:
 - `/vehicle_speed` → current speed (m/s)
 - `/vehicle_position` → current position (x, y, z)
-
 
 ## Key Parameters in `sim_node.hpp`
 
@@ -25,7 +23,6 @@ The **Sim Node** (`SimpleVehicleSimNode`) subscribes to those and publishes:
 | `drag_coeff` | Air/rolling resistance | Lower top speed, stronger deceleration |
 | `wheelbase_m` | Distance between axles | Wider turns |
 | `max_steer_rad` | Max steering angle (radians) | Tighter turns |
-
 
 ## Changes Made for Control Connection
 
@@ -60,30 +57,20 @@ The **Sim Node** (`SimpleVehicleSimNode`) subscribes to those and publishes:
   "vehicle_position"
   ```
 
-
-
 ## How to Build and Run
 
+Build:
 ```bash
-cd ~/Repo/ap1
 colcon build --packages-select ap1_control ap1_pnc_sim
 source install/setup.bash
 ```
 
-### Terminal 1 – Run Control Node
-
-```bash
-ros2 run ap1_control control_node
-```
-
-### Terminal 2 – Run Simulation Node
-
+Then run:
 ```bash
 ros2 run ap1_pnc_sim pnc_sim_node
 ```
 
-### Terminal 3 – Check Output
-
+You can echo output like so:
 ```bash
 ros2 topic echo /vehicle_speed
 ros2 topic echo /vehicle_position
