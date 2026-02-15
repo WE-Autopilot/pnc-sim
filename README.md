@@ -10,7 +10,7 @@ The **Control Node** publishes:
 - `/motor_power` → throttle command (0–1)
 - `/turn_angle` → steering command (radians)
 
-The **Sim Node** (`SimpleVehicleSimNode`) subscribes to those and publishes:
+The **Sim Node** (`SimNode`) subscribes to those and publishes:
 - `/vehicle_speed` → current speed (m/s)
 - `/vehicle_position` → current position (x, y, z)
 
