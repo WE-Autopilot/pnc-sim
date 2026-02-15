@@ -43,9 +43,12 @@ namespace ap1::sim {
         float x = 0.f, y = 0.f, z = 0.f;
         float yaw = 0.f;
         
-        Car() {
-            
-        }
+        // Default Constructor
+        Car() {}
+
+        // Alt constructor
+        Car(const float x, const float y, const float z, const float yaw):
+            x(x), y(y), z(z), yaw(yaw) {}
     };
 } // namespace ap1::sim
 

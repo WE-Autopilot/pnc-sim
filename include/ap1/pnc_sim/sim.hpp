@@ -12,6 +12,7 @@
 #define AP1_SIM_HPP
 
 #include "ap1_msgs/msg/lane_boundaries.hpp"
+#include "ap1_msgs/msg/entity_state.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "ap1/pnc_sim/car.hpp"
 #include "ap1_msgs/msg/entity_state_array.hpp"
@@ -23,6 +24,7 @@
 
 using geometry_msgs::msg::Point;
 using ap1_msgs::msg::LaneBoundaries;
+using ap1_msgs::msg::EntityState;
 using ap1_msgs::msg::EntityStateArray;
 
 namespace ap1::sim
@@ -34,7 +36,8 @@ class Sim
     EntityStateArray entities;
     LaneBoundaries lane;
 
-    Sim(const EntityStateArray &entities, const LaneBoundaries &lane): entities(entities), lane(lane) {}
+    Sim(const EntityStateArray &entities, const LaneBoundaries &lane, const EntityState &car_state): 
+      car(car_state.x, car_state.y, car_state.z, car_state.gamma), entities(entities), lane(lane) {}
 
     /**
      * @brief Update the sim's details based on some car details.

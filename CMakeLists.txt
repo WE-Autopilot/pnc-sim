@@ -5,6 +5,15 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# FetchContent
+include(FetchContent)
+FetchContent_Declare(
+  yaml-cpp
+  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+  GIT_TAG master
+)
+FetchContent_MakeAvailable(yaml-cpp)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -13,13 +22,15 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(ap1_msgs REQUIRED)
 
-add_executable(pnc_sim_node src/main.cpp)
-target_include_directories(pnc_sim_node PUBLIC
+# create sim
+add_executable(sim src/main.cpp)
+target_include_directories(sim PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
-target_compile_features(pnc_sim_node PUBLIC cxx_std_20)  # Require C++20
+target_link_libraries(sim yaml-cpp::yaml-cpp)
+target_compile_features(sim PUBLIC cxx_std_20)  # Require C++20
 ament_target_dependencies(
-  pnc_sim_node
+  sim
   "rclcpp"
   "std_msgs"
   "geometry_msgs"
@@ -28,7 +39,7 @@ ament_target_dependencies(
 )
 
 install(TARGETS
-  pnc_sim_node
+  sim
   DESTINATION lib/${PROJECT_NAME}
 )
 

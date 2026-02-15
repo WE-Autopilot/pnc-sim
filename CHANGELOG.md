@@ -9,5 +9,6 @@
 - [x] Add 3D turn and traction
 - [x] Add entities
 - [x] Add lanes
-- [ ] Add loading entities from config file on startup
-- [ ] Add loading lanes from config file on startup
+- [x] Add loading entities from config file on startup
+- [x] Add loading lanes from config file on startup
+- [ ] Better logging
