@@ -22,9 +22,9 @@ constexpr float DFLT_MASS_KG = 1200.f;
 constexpr float DFLT_WHEELBASE_M = 2.5f;
 
 // DYNAMIC
-constexpr float DFLT_PEAK_MTR_PWR_W = 0.f;
-constexpr float DFLT_MAX_TRACTION_N = 0.f;
-constexpr float DFLT_MAX_BRAKE_N = 0.f;
+constexpr float DFLT_PEAK_MTR_PWR_W = 90000.f; // 90 kW
+constexpr float DFLT_MAX_TRACTION_N = 12000.f; // 12 kN
+constexpr float DFLT_MAX_BRAKE_N = 11000.f; // 11 kN
 
 namespace ap1::sim {
     class Car {
