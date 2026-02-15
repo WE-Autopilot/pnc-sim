@@ -23,7 +23,12 @@ find_package(nav_msgs REQUIRED)
 find_package(ap1_msgs REQUIRED)
 
 # create sim
-add_executable(sim src/main.cpp)
+add_executable(sim 
+  src/main.cpp
+  src/car.cpp
+  src/sim_node.cpp
+  src/sim.cpp
+)
 target_include_directories(sim PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)

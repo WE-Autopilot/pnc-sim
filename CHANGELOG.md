@@ -12,9 +12,9 @@
 - [x] Add loading entities from config file on startup
 - [x] Add loading lanes from config file on startup
 
-### v0.1.2 - WIP
-- [ ] Fix bug in speed not being updated when running full system
-- [ ] Separate into cpp and hpp files
+### v0.1.2 - Feb 15, 2026
+- [x] Fix bug in speed not being updated when running full system
+- [x] Separate into cpp and hpp files
 
 ### v0.1.3 - WIP
 - [ ] Fix/add road drag

@@ -9,7 +9,6 @@
 #ifndef AP1_SIM_CAR
 #define AP1_SIM_CAR
 
-#include "vector.hpp"
 #include "math.h"
 #include <cmath>
 
@@ -44,11 +43,10 @@ namespace ap1::sim {
         float yaw = 0.f;
         
         // Default Constructor
-        Car() {}
+        Car();
 
         // Alt constructor
-        Car(const float x, const float y, const float z, const float yaw):
-            x(x), y(y), z(z), yaw(yaw) {}
+        Car(const float x, const float y, const float z, const float yaw);
     };
 } // namespace ap1::sim
 
