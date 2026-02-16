@@ -76,6 +76,9 @@ void ap1::sim::SimNode::publish() {
     // Speed
     FloatStamped speed_msg;
     speed_msg.value = this->sim.car.speed_mps;
+    if (std::isnan(speed_msg.value)) {
+        throw std::runtime_error("SPEED IS NAN TWIN CATCHEM");
+    }
     speed_pub_->publish(speed_msg);
 
     // Entities

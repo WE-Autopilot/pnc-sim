@@ -1,17 +1,22 @@
 """
 This is a script to create circular world.yaml files to load into the sim.
-Assumes the car will move CLOCKWISE and start
+
+The circle winds CCW
+The coordinate system is +X FORWARD, +Y LEFT
+
 """
 
 import math
 import yaml
 
-DO_LOOP_BACK = True
+DO_LOOP_BACK = False
+OUTPUT_FILEPATH = '../config/generated_circle.yaml'
 
 def circle_points(radius, num_points):
     pts = []
     for i in range(num_points):
         theta = 2.0 * math.pi * i / num_points
+        # WIND CCW
         x = radius * math.cos(theta)
         y = radius * math.sin(theta)
         pts.append(
@@ -41,8 +46,8 @@ def stop_sign(radius, theta):
 def generate_circle_map(
     center_radius, lane_width, num_points, num_stop_signs, filename
 ):
-    left_r = center_radius + lane_width / 2.0
-    right_r = center_radius - lane_width / 2.0
+    left_r = center_radius - lane_width / 2.0
+    right_r = center_radius + lane_width / 2.0
 
     data = {
         "lane_boundary": {
@@ -50,14 +55,14 @@ def generate_circle_map(
             "right": circle_points(right_r, num_points),
         },
         "entities": [
-            stop_sign(right_r - 2.0, 2.0 * i * math.pi / num_stop_signs)
+            stop_sign(right_r + 1.0, 2.0 * i * math.pi / num_stop_signs)
             for i in range(num_stop_signs)
         ],
         "car_pos": {
             "x": round(center_radius, 2),
             "y": 0.0,
             "z": 0.0,
-            "gamma": math.pi,
+            "gamma": math.pi / 2,
         },
     }
 
@@ -73,5 +78,5 @@ if __name__ == "__main__":
         lane_width=5.0,  # m
         num_points=32,
         num_stop_signs=3,
-        filename="../config/generated_circle.yaml",
+        filename=OUTPUT_FILEPATH,
     )

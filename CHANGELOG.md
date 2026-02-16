@@ -18,3 +18,4 @@
 
 ### v0.1.3 - WIP
 - [ ] Fix/add road drag
+- [x] Add NAN check on output speed

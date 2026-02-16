@@ -7,6 +7,7 @@
 #include "ap1_msgs/msg/entity_state_array.hpp"
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 using geometry_msgs::msg::Point;
 using ap1_msgs::msg::LaneBoundaries;
@@ -28,6 +29,9 @@ void ap1::sim::Sim::update(
     // # Longitudinal force
     // calculate max engine force possible
     float max_engine_force_n = this->car.peak_motor_power_w / std::max(car.speed_mps, EPSILON);
+    if (std::isnan(max_engine_force_n)) {
+        throw std::runtime_error("MAX ENGINE FORCE IS NAN");
+    }
 
     // calculate the force cmd
     float force_cmd_n = throttle * max_engine_force_n;
