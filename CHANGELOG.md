@@ -18,4 +18,5 @@
 
 ### v0.1.3 - WIP
 - [ ] Fix/add road drag
+- [x] Add odometer output
 - [x] Add NAN check on output speed

@@ -61,7 +61,13 @@ void ap1::sim::Sim::update(
     // update yaw
     car.yaw += theta_per_second * dt;
 
-    // # Update Position
-    car.x += car.speed_mps * cos(car.yaw) * dt;
-    car.y += car.speed_mps * sin(car.yaw) * dt;
+    // # Calculate Displacement components and total
+    float dx = car.speed_mps * cos(car.yaw) * dt;
+    float dy = car.speed_mps * sin(car.yaw) * dt;
+    float ds = std::sqrt(dx*dx + dy*dy);
+
+    // # Update data
+    car.x += dx;
+    car.y += dy;
+    car.distance_covered += ds;
 }

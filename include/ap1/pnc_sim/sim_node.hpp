@@ -55,13 +55,14 @@ private:
   void on_brake(const FloatStamped::SharedPtr msg);
   
   // ROS subs/pubs
-  rclcpp::Subscription<FloatStamped>::SharedPtr throttle_sub_;
   rclcpp::Subscription<FloatStamped>::SharedPtr steer_sub_;
   rclcpp::Subscription<FloatStamped>::SharedPtr brake_sub_;
+  rclcpp::Subscription<FloatStamped>::SharedPtr throttle_sub_;
 
   rclcpp::Publisher<FloatStamped>::SharedPtr speed_pub_;
-  rclcpp::Publisher<EntityStateArray>::SharedPtr entities_pub_;
   rclcpp::Publisher<LaneBoundaries>::SharedPtr lanes_pub_;
+  rclcpp::Publisher<FloatStamped>::SharedPtr odometer_pub_;
+  rclcpp::Publisher<EntityStateArray>::SharedPtr entities_pub_;
 };
 
 } // namespace ap1::sim

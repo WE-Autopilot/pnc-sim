@@ -37,6 +37,7 @@ namespace ap1::sim {
 
         // state
         float speed_mps = 0.f;
+        float distance_covered = 0.f;
 
         // position
         float x = 0.f, y = 0.f, z = 0.f;

@@ -1,11 +1,9 @@
-#include "ap1/pnc_sim/sim_node.hpp"
-
 #include <cmath>
-#include <rclcpp/node_options.hpp>
 #include <stdexcept>
-#include "rclcpp/rclcpp.hpp"
 
 #include "ap1/pnc_sim/sim.hpp"
+#include "ap1/pnc_sim/sim_node.hpp"
+
 #include "ap1_msgs/msg/entity_state.hpp"
 #include "ap1_msgs/msg/float_stamped.hpp"
 #include "ap1_msgs/msg/entity_state_array.hpp"
@@ -41,28 +39,29 @@ ap1::sim::SimNode::SimNode(const ap1::sim::Sim &sim)
     throttle_sub_ = this->create_subscription<FloatStamped>(
         "/ap1/control/motor_power", 1,
         [this](const FloatStamped::SharedPtr f) {
-        this->on_throttle(f);
+            this->on_throttle(f);
         }
     );
 
     steer_sub_ = this->create_subscription<FloatStamped>(
         "/ap1/control/turn_angle", 1,
         [this](const FloatStamped::SharedPtr f) {
-        this->on_steer(f);
+            this->on_steer(f);
         }
     );
 
     brake_sub_ = this->create_subscription<FloatStamped>(
         "/ap1/control/brake", 1,
         [this](const FloatStamped::SharedPtr f) {
-        this->on_brake(f);
+            this->on_brake(f);
         }
     );
 
     // Publishers
-    speed_pub_ = this->create_publisher<FloatStamped>("/ap1/actuation/speed", 1);
-    lanes_pub_ = this->create_publisher<LaneBoundaries>("/ap1/mapping/lanes", 1);
-    entities_pub_ = this->create_publisher<EntityStateArray>("/ap1/mapping/entities", 1);
+    this->speed_pub_ = create_publisher<FloatStamped>("/ap1/actuation/speed", 1);
+    this->lanes_pub_ = create_publisher<LaneBoundaries>("/ap1/mapping/lanes", 1);
+    this->entities_pub_ = create_publisher<EntityStateArray>("/ap1/mapping/entities", 1);
+    this->odometer_pub_ = create_publisher<FloatStamped>("/ap1/mapping/odometer", 1);
 
     // Log
     RCLCPP_INFO(this->get_logger(), "Simulation ROS Node Started.");
@@ -98,6 +97,11 @@ void ap1::sim::SimNode::publish() {
         p = to_car_frame(p, car_x, car_y, car_yaw);
     }
     lanes_pub_->publish(lane_msg);
+
+    // Odometer
+    FloatStamped distance;
+    distance.value = this->sim.car.distance_covered;
+    odometer_pub_->publish(distance);
 }
 
 // Callbacks
