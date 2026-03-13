@@ -64,11 +64,13 @@ Build:
 colcon build --packages-select ap1_control ap1_pnc_sim
 source install/setup.bash
 ```
+Sometimes you'll need to go manually into ap1 and build & source there.  
 
 Then run:
 ```bash
-ros2 run ap1_pnc_sim pnc_sim_node
+ros2 run ap1_pnc_sim sim <path to config>
 ```
+For a default config you can use `config/generated_circle.yaml`. These contain the waypoints for the left/right lanes as well as Entities.
 
 You can echo output like so:
 ```bash

@@ -68,12 +68,14 @@ ap1::sim::SimNode::SimNode(const ap1::sim::Sim &sim)
 }
 
 void ap1::sim::SimNode::publish() {
+    auto time = this->get_clock()->now();
     float car_x = sim.car.x;
     float car_y = sim.car.y;
     float car_yaw = sim.car.yaw;
 
     // Speed
     FloatStamped speed_msg;
+    speed_msg.header.stamp = time;
     speed_msg.value = this->sim.car.speed_mps;
     if (std::isnan(speed_msg.value)) {
         throw std::runtime_error("SPEED IS NAN TWIN CATCHEM");
@@ -82,6 +84,7 @@ void ap1::sim::SimNode::publish() {
 
     // Entities
     auto entities_msg = sim.entities; // copy
+    entities_msg.header.stamp = this->get_clock()->now();
     for (auto& e : entities_msg.entities) {
         e = to_car_frame(e, car_x, car_y, car_yaw);
         e.gamma -= car_yaw; // rotate orientation into car frame
@@ -90,6 +93,7 @@ void ap1::sim::SimNode::publish() {
 
     // Lane
     auto lane_msg = sim.lane; // copy
+    lane_msg.header.stamp = time;
     for (auto& p : lane_msg.left) {
         p = to_car_frame(p, car_x, car_y, car_yaw);
     }
@@ -100,6 +104,7 @@ void ap1::sim::SimNode::publish() {
 
     // Odometer
     FloatStamped distance;
+    distance.header.stamp = time;
     distance.value = this->sim.car.distance_covered;
     odometer_pub_->publish(distance);
 }
