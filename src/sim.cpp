@@ -42,8 +42,24 @@ void ap1::sim::Sim::update(
     // add brake force
     float brake_force_n = brake * car.max_braking_n;
 
-    // total longitudinal force (brake + engine)
-    float total_force_lon_n = drive_force_n - brake_force_n;
+  // Aerodynamic drag and rolling resistance
+  float aero_drag_n = car.aero_drag_coeff * car.speed_mps * car.speed_mps;
+  float drag_and_rr_n = aero_drag_n + car.rolling_resistance_n;
+
+  // total longitudinal force (brake + engine - drag)
+  float total_force_lon_n = 0.0f;
+
+  if (car.speed_mps > EPSILON) {
+    total_force_lon_n = drive_force_n - brake_force_n - drag_and_rr_n;
+  } else {
+    // Car is effectively stopped
+    if (drive_force_n > brake_force_n + drag_and_rr_n) {
+      total_force_lon_n = drive_force_n - brake_force_n - drag_and_rr_n;
+    } else {
+      total_force_lon_n = 0.0f;
+      car.speed_mps = 0.0f;
+    }
+  }
 
     // clamp to traction limit
     total_force_lon_n = std::clamp(total_force_lon_n, -car.max_traction_n, car.max_traction_n); 
@@ -53,6 +69,11 @@ void ap1::sim::Sim::update(
 
     // # Update Speed
     car.speed_mps += acc_ms2 * dt;
+
+    // Prevent car from moving backwards
+    if (car.speed_mps < 0.0f) {
+        car.speed_mps = 0.0f;
+    }
 
     // # Steering
     // yaw rate
