@@ -25,7 +25,7 @@ using geometry_msgs::msg::Point;
 
 constexpr auto SIM_DT = std::chrono::duration<double>(1.0 / UPDATE_RATE);
 
-void load_from_file(std::string path, EntityStateArray &entities, LaneBoundaries &lane, EntityState & car_state) {
+void load_from_file(std::string path, EntityStateArray &entities, LaneBoundaries &lane, EntityState & car_state, bool &loop) {
     // read file
     YAML::Node config = YAML::LoadFile(path);
 
@@ -65,6 +65,9 @@ void load_from_file(std::string path, EntityStateArray &entities, LaneBoundaries
     car_state.z = car_pt["z"].as<float>();
     car_state.gamma = car_pt["gamma"].as<float>();
 
+    // pull loop flag
+    loop = config["loop"] ? config["loop"].as<bool>() : false;
+
     // DEBUG:
     printf("Car state: {%f %f %f %f}\n", car_state.x, car_state.y, car_state.z, car_state.gamma);
 }
@@ -82,8 +85,9 @@ int main(int argc, char ** argv)
     EntityState car_state{};
     LaneBoundaries lane{};
     EntityStateArray entities{};
+    bool sim_loop = false;
     try {
-        load_from_file(path, entities, lane, car_state);
+        load_from_file(path, entities, lane, car_state, sim_loop);
     } catch (const YAML::Exception& err) {
         throw std::runtime_error(
             "Failed to parse YAML! File: " + path + "\n" +
@@ -95,6 +99,7 @@ int main(int argc, char ** argv)
 
     // make sim
     auto sim = ap1::sim::Sim(entities, lane, car_state);
+    sim.loop = sim_loop; // set flag on sim
 
     // make ros node
     auto ros_node = std::make_shared<ap1::sim::SimNode>(sim);

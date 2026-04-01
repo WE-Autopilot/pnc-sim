@@ -1,4 +1,5 @@
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 #include "ap1/pnc_sim/sim.hpp"
@@ -94,6 +95,23 @@ void ap1::sim::SimNode::publish() {
     // Lane
     auto lane_msg = sim.lane; // copy
     lane_msg.header.stamp = time;
+
+    if (sim.loop) {
+        size_t closest = 0;
+        float min_dist = std::numeric_limits<float>::max();
+        for (size_t i = 0; i < lane_msg.left.size(); i++) {
+            float dx = lane_msg.left[i].x - car_x;
+            float dy = lane_msg.left[i].y - car_y;
+            float dist = std::sqrt(dx*dx + dy*dy);
+            if (dist < min_dist) {
+                min_dist = dist;
+                closest = i;
+            }
+        }
+        std::rotate(lane_msg.left.begin(), lane_msg.left.begin() + closest, lane_msg.left.end());
+        std::rotate(lane_msg.right.begin(), lane_msg.right.begin() + closest, lane_msg.right.end());
+    }
+
     for (auto& p : lane_msg.left) {
         p = to_car_frame(p, car_x, car_y, car_yaw);
     }
