@@ -1,3 +1,4 @@
+loop: true
 lane_boundary:
   left:
   - x: 37.5

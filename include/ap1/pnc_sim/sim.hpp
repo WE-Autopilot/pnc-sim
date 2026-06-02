@@ -31,6 +31,7 @@ class Sim
 {
   public:
     Car car = Car();
+    bool loop = false; // loop flag
     EntityStateArray entities;
     LaneBoundaries lane;
 
